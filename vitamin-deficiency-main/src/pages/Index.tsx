@@ -1,633 +1,313 @@
-import { useState, useEffect } from "react";
-import { VitaminChat } from "@/components/VitaminChat";
-import { AnimatedResultsVitamin } from "@/components/AnimatedResultsVitamin";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { ArrowRight, Pill, Sparkles, User, MessageSquare, AlertTriangle, Info } from "lucide-react";
-import { UserButton } from "@clerk/clerk-react";
-import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-import { Card } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 
-// Sample vitamin deficiency data
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
+import { DashboardMetrics } from "@/components/DashboardMetrics";
+import { SymptomAssessment } from "@/components/SymptomAssessment";
+import { AIResults } from "@/components/AIResults";
+import { VitaminChat } from "@/components/VitaminChat";
+import { IntelligencePerception } from "@/components/IntelligencePerception";
+import { DashboardHeader } from "@/components/DashboardHeader";
+import { SmartAlerts } from "@/components/SmartAlerts";
+import { FutureRiskChart } from "@/components/FutureRiskChart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MessageSquare, LayoutDashboard, Sparkles, ClipboardCheck, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BiomarkerLog } from "@/components/BiomarkerLog";
+import { HealthReportModal } from "@/components/HealthReportModal";
+
 const vitaminDeficiencies = {
   "vitamin_b12": {
-    name: "Vitamin B12 Deficiency",
+    name: "Vitamin B12",
     probability: 0.92,
-    description: "Vitamin B12 is crucial for nerve function, DNA production, and red blood cell formation. Deficiency can lead to anemia, neurological issues, and fatigue.",
-    sources: ["Meat", "Fish", "Dairy", "Eggs", "Fortified cereals"],
-    symptoms: ["Fatigue", "Weakness", "Pale skin", "Tingling in hands/feet", "Memory problems"],
-    report: "Your symptoms strongly indicate a Vitamin B12 deficiency, which is common among individuals with your dietary pattern. The reported fatigue, tingling sensations, and memory issues are classic signs. We recommend increasing B12-rich foods in your diet or considering a high-quality B12 supplement (1000-2000 mcg daily). Consider getting a blood test to confirm levels before starting supplementation."
+    confidence: 94,
+    reasoning: [
+      "Symptom correlation: Neurological tingling matches peripheral neuropathy patterns.",
+      "Dietary analysis: Vegan/Vegetarian profile increases risk factor by 65%.",
+      "Fatigue pattern: Matches megaloblastic anemia clinical indicators.",
+      "Absorption factor: Age and gender profile suggests intrinsic factor optimization."
+    ],
+    description: "Your symptoms strongly indicate a Vitamin B12 deficiency, common with your profile. B12 is crucial for nerve function and energy metabolism.",
+    sources: ["Methylcobalamin Supplement", "Wild-caught Fish", "Fortified Nutritional Yeast"]
   },
   "vitamin_d": {
-    name: "Vitamin D Deficiency",
+    name: "Vitamin D3",
     probability: 0.85,
-    description: "Vitamin D is essential for calcium absorption and bone health. It also plays a role in immune function and mood regulation.",
-    sources: ["Sunlight exposure", "Fatty fish", "Fortified milk", "Egg yolks", "Mushrooms"],
-    symptoms: ["Bone pain", "Muscle weakness", "Depression", "Hair loss", "Impaired wound healing"],
-    report: "Based on your reported symptoms of bone pain, muscle weakness, and low energy levels, you may have a Vitamin D deficiency. This is particularly common in individuals with limited sun exposure or those living in northern climates. Consider taking a Vitamin D3 supplement (2000-5000 IU daily) and increasing your consumption of vitamin D-rich foods. A blood test can determine your exact levels."
+    confidence: 88,
+    reasoning: [
+      "Lifestyle: Low sun exposure identified in region/activity logs.",
+      "Muscle profile: Bone pain and fatigue match D3 deficiency indicators.",
+      "Seasonal factor: Current regional UV index suggests higher supplementation need.",
+      "Immune link: Reported frequency of minor illness correlates with low calcitriol levels."
+    ],
+    description: "Based on your low sun exposure and muscle fatigue, you likely have a Vitamin D3 deficiency. Essential for immune health and bone density.",
+    sources: ["D3 + K2 Supplement", "Mushrooms", "Safe Sunlight Exposure"]
   },
   "iron": {
-    name: "Iron Deficiency",
+    name: "Iron (Ferritin)",
     probability: 0.78,
-    description: "Iron is necessary for hemoglobin production, which carries oxygen throughout the body. Low iron can lead to anemia and reduced energy levels.",
-    sources: ["Red meat", "Beans", "Lentils", "Spinach", "Fortified cereals"],
-    symptoms: ["Extreme fatigue", "Pale skin", "Shortness of breath", "Headaches", "Dizziness"],
-    report: "Your symptom profile suggests an iron deficiency, which is affecting your oxygen delivery system and energy levels. The combination of fatigue, pale skin, and breathlessness is characteristic of iron deficiency anemia. Consider taking an iron supplement (with vitamin C to enhance absorption) and increasing iron-rich foods in your diet. Avoid consuming iron supplements with calcium or coffee, as these can inhibit absorption."
+    confidence: 82,
+    reasoning: [
+      "Respiratory link: Shortness of breath correlates with low hemoglobin oxygen transport.",
+      "Fatigue index: Chronic tired state matches ferritin depletion markers.",
+      "Activity level: High physical output requires higher iron turnover.",
+      "Symptom cluster: Brittle nails/hair reported matches iron-deficiency patterns."
+    ],
+    description: "Your profile suggests low iron levels, affecting oxygen delivery. This explains the shortness of breath and chronic fatigue symptoms.",
+    sources: ["Heme Iron (Red Meat)", "Lentils with Vitamin C", "Spinach"]
   },
-  "vitamin_c": {
-    name: "Vitamin C Deficiency",
-    probability: 0.65,
-    description: "Vitamin C is an antioxidant that supports immune function, collagen production, and iron absorption from plant-based foods.",
-    sources: ["Citrus fruits", "Bell peppers", "Strawberries", "Broccoli", "Kiwi"],
-    symptoms: ["Rough skin", "Easy bruising", "Slow wound healing", "Bleeding gums", "Joint pain"],
-    report: "Your symptoms indicate a possible Vitamin C deficiency. The combination of easy bruising, slow healing wounds, and gum issues suggests inadequate collagen production, which relies on Vitamin C. To address this, increase your daily intake of Vitamin C-rich foods like citrus fruits, bell peppers, and berries. A supplement of 500-1000mg daily may help resolve symptoms faster. Your body cannot store Vitamin C, so consistent daily intake is important."
+  "vitamin_a": {
+    name: "Vitamin A (Retinol)",
+    probability: 0.72,
+    confidence: 79,
+    reasoning: [
+      "Dermal indicator: Jaundice-like yellowing can relate to metabolism imbalance.",
+      "Vision link: Night vision and dry eyes are primary indicators.",
+      "Immune profile: Frequent infections suggest low mucosal integrity."
+    ],
+    description: "Your symptoms and yellowing indicators suggest Vitamin A/E imbalance or metabolic stress.",
+    sources: ["Carrots", "Sweet Potatoes", "Cod Liver Oil"]
+  },
+  "zinc": {
+    name: "Zinc / Electrolytes",
+    probability: 0.68,
+    confidence: 84,
+    reasoning: [
+      "Digestive link: Chronic diarrhea depletes zinc and electrolyte stores rapidly.",
+      "Immune link: Sore throat and slow healing correlate with zinc deficiency.",
+      "Metabolic factor: High stress increases zinc mobilization and excretion."
+    ],
+    description: "Frequent diarrhea and sore throats strongly correlate with Zinc and electrolyte depletion.",
+    sources: ["Oysters", "Pumpkin Seeds", "Grass-fed Beef"]
   }
 };
 
-// Background images
-const BackgroundImages = [
-  "/images/plant-bg-1.jpg",
-  "/images/plant-bg-2.jpg",
-];
-
 const Index = () => {
+  const [isAssessing, setIsAssessing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState("assess");
-  const [currentDeficiencyInfo, setCurrentDeficiencyInfo] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("overview");
   const { toast } = useToast();
   const [assessmentCount, setAssessmentCount] = useState(0);
-  const [symptoms, setSymptoms] = useState<Record<string, boolean>>({
-    fatigue: false,
-    paleSkin: false,
-    tingling: false,
-    memoryIssues: false,
-    breathlessness: false,
-    hairLoss: false,
-    bonePain: false,
-    musclePain: false,
-    bruising: false,
-    dizziness: false,
-  });
-  const [energyLevel, setEnergyLevel] = useState<string>("medium");
-  const [dietType, setDietType] = useState<string>("mixed");
-  const [showReport, setShowReport] = useState(false);
+  const [isLogOpen, setIsLogOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
-    if (results.length > 0) {
-      setCurrentDeficiencyInfo(results[0]);
+    if (location.pathname === "/nutritionist") {
       setActiveTab("chat");
+    } else if (location.pathname === "/assessments") {
+      setActiveTab("assessments");
+    } else if (location.pathname === "/reports") {
+      setActiveTab("reports");
     } else {
-      setCurrentDeficiencyInfo(null);
+      setActiveTab("overview");
     }
-  }, [results]);
+  }, [location.pathname]);
 
-  const analyzeSymptoms = () => {
+  const onAssessmentComplete = (data: any) => {
+    setIsAssessing(false);
     setAnalyzing(true);
-    
-    // Simulate API delay
+
+    // Simulate premium AI analysis
     setTimeout(() => {
-      let detectedDeficiencies: any[] = [];
-      
-      // Simple algorithm to detect potential deficiencies based on symptoms
-      const symptomCount = Object.values(symptoms).filter(Boolean).length;
-      
-      if (symptomCount === 0) {
-        toast({
-          title: "No Symptoms Selected",
-          description: "Please select at least one symptom to analyze.",
-          variant: "destructive",
-        });
-        setAnalyzing(false);
-        return;
-      }
-      
-      if (symptoms.fatigue && symptoms.paleSkin && symptoms.breathlessness) {
-        // Iron deficiency signs
-        detectedDeficiencies.push(vitaminDeficiencies.iron);
-      }
-      
-      if (symptoms.tingling && symptoms.memoryIssues && symptoms.fatigue && dietType === "vegan") {
-        // B12 deficiency common in vegans
-        detectedDeficiencies.push(vitaminDeficiencies.vitamin_b12);
-      }
-      
-      if (symptoms.bonePain && symptoms.musclePain && energyLevel === "low") {
-        // Vitamin D deficiency signs
-        detectedDeficiencies.push(vitaminDeficiencies.vitamin_d);
-      }
-      
-      if (symptoms.bruising && symptoms.dizziness) {
-        // Potential vitamin C deficiency
-        detectedDeficiencies.push(vitaminDeficiencies.vitamin_c);
-      }
-      
-      // If no specific pattern but many symptoms, suggest general deficiencies
-      if (detectedDeficiencies.length === 0 && symptomCount > 3) {
-        // Add general deficiencies based on diet and energy
-        if (dietType === "vegan" || dietType === "vegetarian") {
-          detectedDeficiencies.push(vitaminDeficiencies.vitamin_b12);
-        }
-        if (energyLevel === "low") {
-          detectedDeficiencies.push(vitaminDeficiencies.iron);
-        }
-      }
-      
-      setResults(detectedDeficiencies);
-      setAssessmentCount(prev => prev + 1);
-      
-      if (detectedDeficiencies.length > 0) {
-        toast({
-          title: "Potential Deficiency Detected",
-          description: `We've identified potential ${detectedDeficiencies[0].name} with ${(detectedDeficiencies[0].probability * 100).toFixed(0)}% confidence. View the analysis for details.`,
-          variant: "default",
-        });
-        setShowReport(true);
-      } else {
+      let detected: any[] = [];
+      const hasSymptoms = Object.values(data.symptoms).some(v => v);
+
+      if (!hasSymptoms) {
         toast({
           title: "Assessment Complete",
-          description: "Good news! No high-confidence vitamin deficiencies detected based on your symptoms.",
-          variant: "default",
+          description: "No immediate deficiencies detected based on your input.",
         });
+        setAnalyzing(false);
+        setIsAssessing(false);
+        return;
       }
-      
+
+      if (data.symptoms.fatigue && data.symptoms.breathlessness) detected.push(vitaminDeficiencies.iron);
+      if (data.symptoms.tingling || data.diet === "vegan") detected.push(vitaminDeficiencies.vitamin_b12);
+      if (data.lifestyle.low_sun || data.symptoms.bonePain) detected.push(vitaminDeficiencies.vitamin_d);
+      if (data.symptoms.jaundice) detected.push(vitaminDeficiencies.vitamin_a);
+      if (data.symptoms.diarrhea || data.symptoms.soreThroat) detected.push(vitaminDeficiencies.zinc);
+      if (data.lifestyle.alcohol) detected.push(vitaminDeficiencies.vitamin_b12);
+
+      if (detected.length === 0) detected.push(vitaminDeficiencies.vitamin_d);
+
+      setResults(detected);
+      setAssessmentCount(prev => prev + 1);
       setAnalyzing(false);
+
+      setActiveTab("reports");
+      toast({
+        title: "AI Analysis Ready",
+        description: `We've identified ${detected.length} potential optimization areas. Viewing clinical dossier.`,
+      });
     }, 2500);
   };
 
-  const handleSymptomChange = (symptom: string, checked: boolean) => {
-    setSymptoms(prev => ({
-      ...prev,
-      [symptom]: checked
-    }));
-  };
-
-  const resetAssessment = () => {
-    setSymptoms({
-      fatigue: false,
-      paleSkin: false,
-      tingling: false,
-      memoryIssues: false,
-      breathlessness: false,
-      hairLoss: false,
-      bonePain: false,
-      musclePain: false,
-      bruising: false,
-      dizziness: false,
+  const handleExportPDF = () => {
+    setIsReportModalOpen(true);
+    toast({
+      title: "Opening Clinical Dossier",
+      description: "Preparing your high-fidelity medical report preview...",
     });
-    setEnergyLevel("medium");
-    setDietType("mixed");
-    setShowReport(false);
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-  
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
-
-  const bgVariants = {
-    initial: { scale: 1, opacity: 0.2 },
-    animate: { 
-      scale: 1.05, 
-      opacity: 0.3,
-      transition: { 
-        duration: 20, 
-        repeat: Infinity, 
-        repeatType: "reverse" as const
-      } 
-    }
   };
 
   return (
-    <div className="min-h-screen relative">
-      <div className="fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900/95 via-blue-900/95 to-purple-900/95" />
-        <div className="absolute inset-0 bg-grid opacity-5" />
-        
-        {BackgroundImages.map((img, index) => (
-          <motion.div 
-            key={index}
-            initial="initial"
-            animate="animate"
-            variants={bgVariants}
-            className="absolute inset-0 bg-no-repeat bg-cover mix-blend-overlay"
-            style={{ 
-              backgroundImage: `url(${img})`,
-              filter: "saturate(0.8) hue-rotate(210deg)",
-              transformOrigin: index === 0 ? "center" : "bottom right"
-            }}
-          />
-        ))}
-        
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(20)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-2 h-2 rounded-full bg-blue-300/10"
-              initial={{ 
-                x: Math.random() * window.innerWidth, 
-                y: Math.random() * window.innerHeight,
-                opacity: 0.1 + Math.random() * 0.2,
-                scale: 0.1 + Math.random()
-              }}
-              animate={{ 
-                y: [null, "-100vh"],
-                opacity: [null, 0],
-              }}
-              transition={{ 
-                duration: 10 + Math.random() * 20, 
-                repeat: Infinity,
-                delay: Math.random() * 10,
-                ease: "linear"
-              }}
-            />
-          ))}
-        </div>
-      </div>
+    <div className="space-y-12">
+      <DashboardHeader
+        healthScore={results.length > 0 ? 68 : 94}
+        riskLevel={results.length > 0 ? "Moderate" : "Low"}
+        lastUpdated="Active"
+        onExportPDF={handleExportPDF}
+        onNewLog={() => setIsLogOpen(true)}
+      />
 
-      <header className="relative z-10 bg-black/30 backdrop-blur-md border-b border-white/10">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <motion.div 
-                className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center"
-                animate={{ 
-                  rotate: [0, 5, -5, 0],
-                  scale: [1, 1.1, 1]
-                }}
-                transition={{ 
-                  duration: 3, 
-                  repeat: Infinity,
-                  repeatType: "reverse"
-                }}
+      <div id="active-tabs-section" className="space-y-12 pb-20">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12">
+          <div className="flex justify-center">
+            <TabsList className="glass-morphism h-16 p-1 rounded-2xl border-white/5">
+              <TabsTrigger
+                value="overview"
+                onClick={() => setActiveTab("overview")}
+                className="rounded-xl px-8 h-full data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
-                <Pill className="h-5 w-5 text-white" />
-              </motion.div>
-              <span className="text-xl font-semibold text-white">Vitamin <span className="text-blue-300">AI</span></span>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="text-white border-white/20 hover:bg-white/10 transition-all duration-300"
-                onClick={() => window.location.href = "/"}
-              >
-                <motion.span 
-                  whileHover={{ x: -3 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                >
-                  Home
-                </motion.span>
-              </Button>
-              <UserButton afterSignOutUrl="/" />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="relative z-10 min-h-[calc(100vh-80px)] p-6 pt-8 space-y-8"
-      >
-        <motion.div variants={itemVariants} className="max-w-4xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center justify-center gap-3 mb-4">
-            <div className="relative">
-              <motion.div
-                animate={{ 
-                  scale: [1, 1.2, 1],
-                  opacity: [0.5, 0.8, 0.5]
-                }}
-                transition={{ 
-                  duration: 3,
-                  repeat: Infinity,
-                  repeatType: "reverse"
-                }}
-                className="absolute -inset-4 rounded-full bg-blue-500/10 blur-md"
-              />
-              <motion.div
-                className="h-14 w-14 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 flex items-center justify-center"
-                animate={{
-                  rotate: [0, 10, -10, 0]
-                }}
-                transition={{
-                  duration: 5,
-                  repeat: Infinity,
-                  repeatType: "reverse"
-                }}
-              >
-                <Sparkles className="h-7 w-7 text-white" />
-              </motion.div>
-            </div>
-          </div>
-          <motion.h1 
-            variants={itemVariants}
-            className="text-4xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-200 via-purple-300 to-indigo-100"
-          >
-            Vitamin Deficiency Detection
-          </motion.h1>
-          <motion.p 
-            variants={itemVariants}
-            className="text-lg text-blue-100 max-w-2xl mx-auto"
-          >
-            Complete a symptom assessment to identify potential vitamin deficiencies and get personalized nutrition advice.
-          </motion.p>
-        </motion.div>
-
-        {assessmentCount > 0 && (
-          <motion.div 
-            variants={containerVariants}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto"
-          >
-            <motion.div 
-              variants={itemVariants}
-              whileHover={{ y: -5, boxShadow: "0 10px 30px -15px rgba(59, 130, 246, 0.3)" }}
-              className="flex bg-black/20 backdrop-blur-sm border border-blue-500/10 rounded-lg p-4 items-center gap-4 transition-all"
-            >
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-                <motion.div
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                >
-                  <User className="h-5 w-5 text-white" />
-                </motion.div>
-              </div>
-              <div>
-                <p className="text-sm text-blue-200">Assessments Completed</p>
-                <p className="text-2xl font-semibold text-white">{assessmentCount}</p>
-              </div>
-            </motion.div>
-            <motion.div 
-              variants={itemVariants}
-              whileHover={{ y: -5, boxShadow: "0 10px 30px -15px rgba(59, 130, 246, 0.3)" }}
-              className="flex bg-black/20 backdrop-blur-sm border border-blue-500/10 rounded-lg p-4 items-center gap-4 transition-all"
-            >
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
-                <motion.div
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, delay: 0.2 }}
-                >
-                  <AlertTriangle className="h-5 w-5 text-white" />
-                </motion.div>
-              </div>
-              <div>
-                <p className="text-sm text-blue-200">Deficiencies Detected</p>
-                <motion.p 
-                  key={results.length}
-                  initial={{ scale: 1 }}
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 0.5 }}
-                  className="text-2xl font-semibold text-white"
-                >
-                  {results.length}
-                </motion.p>
-              </div>
-            </motion.div>
-            <motion.div 
-              variants={itemVariants}
-              whileHover={{ y: -5, boxShadow: "0 10px 30px -15px rgba(59, 130, 246, 0.3)" }}
-              className="flex bg-black/20 backdrop-blur-sm border border-blue-500/10 rounded-lg p-4 items-center gap-4 transition-all"
-            >
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-                <motion.div
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, delay: 0.4 }}
-                >
-                  <Info className="h-5 w-5 text-white" />
-                </motion.div>
-              </div>
-              <div>
-                <p className="text-sm text-blue-200">Health Status</p>
-                <p className="text-2xl font-semibold text-white">
-                  {results.length > 0 ? "Needs Attention" : assessmentCount > 0 ? "Healthy" : "Unknown"}
-                </p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        <motion.div variants={itemVariants}>
-          <Tabs 
-            value={activeTab} 
-            onValueChange={setActiveTab} 
-            className="max-w-4xl mx-auto"
-            defaultValue="assess"
-          >
-            <TabsList className="grid w-full grid-cols-2 bg-black/30 backdrop-blur-md border border-blue-500/10">
-              <TabsTrigger 
-                value="assess" 
-                className="data-[state=active]:bg-blue-600/30 data-[state=active]:text-white text-blue-200 h-12"
-              >
-                <User className="mr-2 h-4 w-4" />
-                Symptom Assessment
+                <LayoutDashboard className="w-5 h-5 mr-2" />
+                Health Dashboard
               </TabsTrigger>
-              <TabsTrigger 
-                value="chat" 
-                className="data-[state=active]:bg-blue-600/30 data-[state=active]:text-white text-blue-200 h-12"
-                disabled={!currentDeficiencyInfo}
+              <TabsTrigger
+                value="assessments"
+                onClick={() => setActiveTab("assessments")}
+                className="rounded-xl px-8 h-full data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Nutrition Assistant
-                {currentDeficiencyInfo && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="ml-2 w-2 h-2 rounded-full bg-green-500"
-                  />
-                )}
+                <ClipboardCheck className="w-5 h-5 mr-2" />
+                Assessments
+              </TabsTrigger>
+              <TabsTrigger
+                value="reports"
+                onClick={() => setActiveTab("reports")}
+                className="rounded-xl px-8 h-full data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
+              >
+                <BarChart3 className="w-5 h-5 mr-2" />
+                Medical Reports
+              </TabsTrigger>
+              <TabsTrigger
+                value="chat"
+                onClick={() => setActiveTab("chat")}
+                className="rounded-xl px-8 h-full data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
+              >
+                <MessageSquare className="w-5 h-5 mr-2" />
+                AI Nutritionist
               </TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="assess" className="space-y-8 mt-6">
-              <motion.div
-                variants={itemVariants}
-                className="glass-panel p-6 rounded-lg max-w-xl mx-auto bg-black/30 backdrop-blur-md border border-blue-500/10"
-              >
-                <h2 className="text-xl font-semibold mb-4 text-center flex items-center justify-center gap-2">
-                  <Sparkles className="h-5 w-5 text-blue-300" />
-                  <span>Symptom Assessment</span>
-                </h2>
-                
-                <Card className="bg-black/40 border-blue-500/20 p-5">
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-medium mb-4">Select your symptoms:</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {[
-                          { id: "fatigue", label: "Fatigue & Weakness" },
-                          { id: "paleSkin", label: "Pale Skin" },
-                          { id: "tingling", label: "Tingling in Extremities" },
-                          { id: "memoryIssues", label: "Memory Problems" },
-                          { id: "breathlessness", label: "Shortness of Breath" },
-                          { id: "hairLoss", label: "Hair Loss" },
-                          { id: "bonePain", label: "Bone/Joint Pain" },
-                          { id: "musclePain", label: "Muscle Pain/Cramps" },
-                          { id: "bruising", label: "Easy Bruising" },
-                          { id: "dizziness", label: "Dizziness/Headaches" },
-                        ].map(symptom => (
-                          <div key={symptom.id} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={symptom.id} 
-                              checked={symptoms[symptom.id as keyof typeof symptoms]}
-                              onCheckedChange={(checked) => handleSymptomChange(symptom.id, checked === true)}
-                              className="border-blue-500/50"
-                            />
-                            <Label htmlFor={symptom.id} className="text-sm">{symptom.label}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-md font-medium mb-2">Energy Level:</h3>
-                      <RadioGroup defaultValue="medium" value={energyLevel} onValueChange={setEnergyLevel}>
-                        <div className="flex flex-wrap gap-4">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="low" id="energy-low" />
-                            <Label htmlFor="energy-low">Low</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="medium" id="energy-medium" />
-                            <Label htmlFor="energy-medium">Medium</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="high" id="energy-high" />
-                            <Label htmlFor="energy-high">High</Label>
-                          </div>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-md font-medium mb-2">Diet Type:</h3>
-                      <RadioGroup defaultValue="mixed" value={dietType} onValueChange={setDietType}>
-                        <div className="flex flex-wrap gap-4">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="mixed" id="diet-mixed" />
-                            <Label htmlFor="diet-mixed">Mixed</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="vegetarian" id="diet-vegetarian" />
-                            <Label htmlFor="diet-vegetarian">Vegetarian</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="vegan" id="diet-vegan" />
-                            <Label htmlFor="diet-vegan">Vegan</Label>
-                          </div>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                    
-                    <div className="flex gap-3 pt-2">
-                      <Button 
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                        disabled={analyzing}
-                        onClick={analyzeSymptoms}
-                      >
-                        {analyzing ? (
-                          <>
-                            <span className="animate-pulse mr-2">Analyzing...</span>
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                              className="h-4 w-4 border-2 border-white border-t-transparent rounded-full"
-                            />
-                          </>
-                        ) : "Analyze Symptoms"}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="border-blue-500/20 hover:bg-blue-500/10"
-                        onClick={resetAssessment}
-                        disabled={analyzing}
-                      >
-                        Reset
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-              
-              {(analyzing || results.length > 0) && (
-                <AnimatedResultsVitamin 
-                  deficiencies={results} 
-                  isLoading={analyzing} 
-                />
-              )}
+          </div>
 
-              {showReport && results.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="max-w-4xl mx-auto"
-                >
-                  <Card className="bg-black/30 backdrop-blur-md border border-blue-500/20 p-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 border-b border-blue-500/20 pb-3">
-                        <Info className="h-5 w-5 text-blue-300" />
-                        <h2 className="text-xl font-semibold text-white">Deficiency Report</h2>
-                      </div>
-                      
-                      {results.map((deficiency, index) => (
-                        <div key={index} className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-medium text-blue-200">{deficiency.name}</h3>
-                            <Badge className="bg-blue-600">{(deficiency.probability * 100).toFixed(0)}% Match</Badge>
-                          </div>
-                          
-                          <p className="text-white text-sm leading-relaxed">{deficiency.report}</p>
-                          
-                          <div className="pt-2">
-                            <h4 className="text-sm font-medium text-blue-300 mb-1">Recommended Food Sources:</h4>
-                            <div className="flex flex-wrap gap-2">
-                              {deficiency.sources.map((source: string, i: number) => (
-                                <Badge key={i} variant="outline" className="bg-blue-900/20 border-blue-500/30">
-                                  {source}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                          
-                          <Button 
-                            size="sm" 
-                            className="mt-2 bg-blue-600 hover:bg-blue-700"
-                            onClick={() => setActiveTab("chat")}
-                          >
-                            Discuss with Nutrition Assistant
-                            <ArrowRight className="ml-2 h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
+          <TabsContent value="overview" className="space-y-12">
+            <DashboardMetrics
+              assessmentCount={assessmentCount}
+              deficiencyCount={results.length}
+              healthScore={results.length > 0 ? 68 : 0}
+              riskLevel={results.length > 0 ? "Moderate" : "N/A"}
+            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+              <div className="lg:col-span-2 space-y-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="glass-layer-1 p-8 rounded-[2rem] border border-white/5 space-y-4 relative overflow-hidden group">
+                    <div className="hero-glow opacity-10 group-hover:opacity-20 transition-opacity" />
+                    <h4 className="text-lg font-bold">Clinical Baseline</h4>
+                    <p className="text-sm text-slate-500 italic">No critical anomalies detected in your current biometric stream.</p>
+                    <Button onClick={() => setActiveTab("assessments")} variant="link" className="text-violet-400 p-0 h-auto font-bold tracking-widest text-[10px] uppercase">New Assessment &rarr;</Button>
+                  </div>
+                  <div className="glass-layer-1 p-8 rounded-[2rem] border border-white/5 space-y-4">
+                    <h4 className="text-lg font-bold">DNA Synthesis</h4>
+                    <p className="text-sm text-slate-500">Connect your genomic data for 10x deeper vitamin absorption mapping.</p>
+                    <span className="text-violet-500/50 font-bold tracking-widest text-[10px] uppercase">Coming Soon</span>
+                  </div>
+                </div>
+
+                <div className="glass-layer-1 p-10 rounded-[2.5rem] border border-white/5 relative overflow-hidden">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                      <Sparkles className="text-emerald-400 w-6 h-6" />
                     </div>
-                  </Card>
-                </motion.div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="chat" className="mt-6">
-              <VitaminChat deficiencyInfo={currentDeficiencyInfo} />
-            </TabsContent>
-          </Tabs>
-        </motion.div>
-      </motion.div>
-    </div>
+                    <h3 className="text-2xl font-bold text-white">System Status: Optimal</h3>
+                  </div>
+                  <p className="text-slate-400 leading-relaxed">
+                    Your metabolic profile is currently aligned with your target "Member Pro" benchmarks.
+                    Vitamin D levels remain the primary optimization focus based on regional UV trends.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-12">
+                <SmartAlerts />
+                <FutureRiskChart />
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="assessments" className="space-y-12">
+            <div className="max-w-4xl mx-auto py-10">
+              <AnimatePresence mode="wait">
+                {isAssessing ? (
+                  <motion.div key="assessing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <SymptomAssessment onComplete={onAssessmentComplete} />
+                  </motion.div>
+                ) : analyzing ? (
+                  <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-20">
+                    <IntelligencePerception
+                      confidence={98}
+                      reasoning={["Analyzing biomarker distribution...", "Correlating with clinical databases...", "Simulating nutrient interactions..."]}
+                      isAnalyzing={true}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div key="ready" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-12 py-20 glass-layer-1 rounded-[3rem] border-dashed border-white/10">
+                    <div className="w-24 h-24 rounded-3xl bg-violet-600/10 flex items-center justify-center mx-auto border border-violet-500/20">
+                      <ClipboardCheck className="w-12 h-12 text-violet-400" />
+                    </div>
+                    <div className="space-y-4">
+                      <h2 className="text-4xl font-black text-white">Clinical Scan Station</h2>
+                      <p className="text-slate-500 max-w-md mx-auto">Initialize a high-fidelity intelligence scan to detect nutrient gaps based on your symptoms and lifestyle baseline.</p>
+                    </div>
+                    <Button onClick={() => setIsAssessing(true)} className="h-16 px-12 bg-white text-black hover:bg-slate-200 rounded-2xl font-bold shadow-2xl shadow-white/20 text-lg">
+                      Start Intelligent Assessment
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-12">
+            {results.length > 0 ? (
+              <AIResults results={results} onExport={handleExportPDF} />
+            ) : (
+              <div className="text-center py-40 glass-layer-1 rounded-[3rem] border border-white/5">
+                <BarChart3 className="w-16 h-16 text-slate-700 mx-auto mb-6" />
+                <h3 className="text-2xl font-bold text-slate-500">No Assessment Reports Yet</h3>
+                <p className="text-slate-600 mt-2">Complete an assessment to generate your first Clinical Health Dossier.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="chat">
+            <div className="w-full">
+              <VitaminChat deficiencyInfo={results[0]} />
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <BiomarkerLog isOpen={isLogOpen} onClose={() => setIsLogOpen(false)} />
+      <HealthReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        results={results}
+      />
+    </div >
   );
 };
 

@@ -1,5 +1,5 @@
-
 import type { Config } from "tailwindcss";
+import animate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -21,6 +21,7 @@ export default {
     extend: {
       fontFamily: {
         inter: ['Inter', 'sans-serif'],
+        satoshi: ['Satoshi', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -56,11 +57,30 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Premium Core Colors
+        "state-low": "#10b981", // Success / Low Risk
+        "state-mid": "#f59e0b", // Warning / Moderate Risk
+        "state-high": "#ef4444", // Alert / High Risk
+        "surface-raised": "rgba(255, 255, 255, 0.05)",
+        "surface-overlay": "rgba(255, 255, 255, 0.08)",
+        navy: {
+          950: "#020617",
+          900: "#0f172a",
+          800: "#1e293b",
+        },
+        violet: {
+          500: "#8b5cf6",
+          600: "#7c3aed",
+          700: "#6d28d9",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        "2xl": "1rem",
+        "3xl": "1.5rem",
+        "4xl": "2.5rem",
       },
       keyframes: {
         "accordion-down": {
@@ -72,21 +92,37 @@ export default {
           to: { height: "0" },
         },
         "fade-in": {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        "slide-in": {
-          "0%": { transform: "translateY(10px)", opacity: "0" },
-          "100%": { transform: "translateY(0)", opacity: "1" },
+        "neural-pulse": {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.5", transform: "scale(1.05)" },
+        },
+        "data-stream": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.3s ease-out",
-        "slide-in": "slide-in 0.3s ease-out",
+        "fade-in": "fade-in 0.5s ease-out",
+        "neural-pulse": "neural-pulse 3s infinite ease-in-out",
+        "data-stream": "data-stream 2s infinite linear",
+        "float": "float 6s infinite ease-in-out",
+      },
+      boxShadow: {
+        "premium-sm": "0 2px 4px 0 rgba(0,0,0,0.3)",
+        "premium-md": "0 8px 16px -4px rgba(0,0,0,0.5)",
+        "premium-lg": "0 24px 48px -12px rgba(0,0,0,0.6)",
+        "violet-glow": "0 0 20px rgba(124, 58, 237, 0.3)",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [animate],
 } satisfies Config;
